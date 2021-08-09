@@ -1,6 +1,6 @@
 ## [Physical Orienteering Problem for Unmanned Aerial Vehicle Data Collection Planning in Environments with Obstacles](https://doi.org/10.1109/LRA.2019.2923949)
 
-This repository contains solver for the [Physical Orienteering Problem (POP) based on the Variable Neighborhood Search (VNS) method combined with the asymptotically optimal sampling-based Probabilistic Roadmap (PRM*)](https://doi.org/10.1109/LRA.2019.2923949).
+This repository contains solver for the [Physical Orienteering Problem (POP) based on the Variable Neighborhood Search (VNS) method combined with the asymptotically optimal sampling-based Probabilistic Roadmap (PRM*)](https://doi.org/10.1109/LRA.2019.2923949). It has been adapted from Robert Penicka's original version to allow for the replacement of each target location with a neighborhood (a circle comprised of discretized points) from which the model can visit one point.
 
 **Repository contains following content:**
 - **datasets** folder contains dataset instances of POP
@@ -46,6 +46,8 @@ The most important configuration parameters are:
 - _budget-override_ - budget constraint of the orienteering problem
 - _dubins-radius_ - turning radius of dubins vehicle
 - _dubins-resolution_ - number of heading samples in target locations
+- _neighborhood-places_ - number of "neighbors" or discretized points around the circumference of each neighborhood
+- _neighborhood-radius_ - radius of each neighborhood
 
 The configuration parameters can be also set as a command line parameters, e.g. by running
 

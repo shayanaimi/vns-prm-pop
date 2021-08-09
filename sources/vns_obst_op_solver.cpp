@@ -244,8 +244,9 @@ void VnsPrmOPSolver<HeapPoint2D>::fillCityNodes(OP_Prolem<HeapPoint3D> &problem)
 
 template<>
 	bool VnsPrmOPSolver<HeapPoint2DHeading>::testCollision(std::vector<MeshObject*> obstacles, MeshObject* object, HeapNode<HeapPoint2DHeading>* node) {
+		//this function was pulled from prm.h, modified a bit, and added here so that it could be used in FillCityNodes below
 		Position3D object_position;
-		object_position.x = node->data.x;
+		object_position.x = node->data.x; //only x and y are relevant for collision check
 		object_position.y = node->data.y;
 		object_position.z = 0;
 		object_position.yaw = 0;
