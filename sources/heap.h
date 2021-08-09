@@ -55,6 +55,10 @@ typedef struct HeapPoint2D {
 	Point3D toPoint3D() {
 		return Point3D(this->x, this->y, 0);
 	}
+	
+	std::string toString(){
+		return "x " + std::to_string(this->x) + " , y " + std::to_string(this->y);
+	}
 } HeapPoint2D;
 
 typedef struct HeapPoint2DHeading {
@@ -77,6 +81,7 @@ typedef struct HeapPoint2DHeading {
 		this->radius = radius_;
 	}
 
+
 	std::vector<double> toVector() {
 		std::vector<double> vector;
 		vector.push_back(x);
@@ -98,6 +103,10 @@ typedef struct HeapPoint2DHeading {
 	}
 	Point3D toPoint3D() {
 		return Point3D(this->x, this->y, 0);
+	}
+
+	std::string toString(){
+		return "x " + std::to_string(this->x) + " , y " + std::to_string(this->y) + ", phi " + std::to_string(this->phi);
 	}
 } HeapPoint2DHeading;
 
@@ -141,6 +150,10 @@ typedef struct HeapPoint3D {
 
 	Point3D toPoint3D() {
 		return Point3D(this->x, this->y, this->z);
+	}
+
+	std::string toString(){
+		return "x " + std::to_string(this->x) + " , y " + std::to_string(this->y) + ", z " + std::to_string(this->z);
 	}
 } HeapPoint3D;
 

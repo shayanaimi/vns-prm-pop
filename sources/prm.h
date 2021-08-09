@@ -20,12 +20,13 @@
 
 #include "mesh_object.h"
 #include "tree_node.h"
-//#include "map_point.h"
 #include "dijkstra.h"
 #include <crl/alg/algorithm.h>
 #include "crl/gui/canvas.h"
 #include <crl/gui/shape.h>
-
+#include "heuristic_types.h"
+#include <tuple>
+#include <unistd.h>
 using namespace crl::gui;
 using namespace opendubins;
 using crl::logger;
@@ -38,7 +39,7 @@ public:
 	PRM(crl::CConfig& config, PlanningState planning_state_);
 	virtual ~PRM();
 	void create_initial_graph(std::vector<MeshObject*> &obstacles_, MeshObject* robot_,
-			std::vector<HeapNode<T>*> &cities_nodes_, int initial_size);
+			std::vector<HeapNode<T>*> &cities_nodes_, int initial_size, std::vector<std::vector<GraphNode<T>>> &nodesAllClusters_);
 	void add_uniform_points(int num_points_to_add);
 
 	bool add_point(Point3DOriented point);
@@ -129,7 +130,8 @@ PRM<T>::~PRM() {
 
 template<class T>
 void PRM<T>::create_initial_graph(std::vector<MeshObject*> &obstacles_, MeshObject* robot_,
-		std::vector<HeapNode<T>*> &cities_nodes_, int initial_size) {
+		std::vector<HeapNode<T>*> &cities_nodes_, int initial_size, std::vector<std::vector<GraphNode<T>>>  &nodesAllClusters_) { //add nodesallclusters as a parameter here
+	
 	INFO("generate graph");
 	//generated_number_of_neighbors = NUMBER_OF_NEAREST_NEIGBOURS + 1;
 	this->cities_nodes = cities_nodes_;
@@ -143,36 +145,44 @@ void PRM<T>::create_initial_graph(std::vector<MeshObject*> &obstacles_, MeshObje
 	bool collisionDetected = true;
 
 //add also cities
-	generatedFreePositions.reserve(initial_size + cities_nodes.size());
-	INFO_MAGENTA("------------------------------------------------reserved----------------------------------------------");
-	std::cout<<cities_nodes.size()<<std::endl;
+	//generatedFreePositions.reserve(initial_size + cities_nodes.size());
 
 //try to connect goal
 	int citiesNumConnectionsAdded = 0;
-	INFO("we have "<<cities_nodes.size()<<"city nodes")
 	for (int cityIndex = 0; cityIndex < cities_nodes.size(); ++cityIndex) {
 		//MPNN::ANNpoint newPoint = fillANNpoint(cities_nodes[cityIndex]);
 		INFO("city: "<<*cities_nodes[cityIndex]);
-		if (!testCollision(obstacles, robot, cities_nodes[cityIndex])) {
+		if (!testCollision(obstacles, robot, cities_nodes[cityIndex])) { //TODO: eliminate redundancy by taking this out because we already did collis. testing
 			//kdTree->AddPoint(newPoint, cities_nodes[cityIndex]);
-			generatedFreePositions.push_back(cities_nodes[cityIndex]);
+			//generatedFreePositions.push_back(cities_nodes[cityIndex]);
 		} else {
-			ERROR("collision detected in city with index "<<cityIndex<<"!!!! exiting....");
-			exit(1);
+	
+			cities_nodes.erase(cities_nodes.begin() + cityIndex);
+			cityIndex--;
+			// ERROR("collision detected in city with index "<<cityIndex<<"!!!! exiting....");
+			// exit(1);
 		}
 
 	}
+	//now that it knows how many collisions there are, reserve the correct amount of memory in GFP and push back the nodes
+	generatedFreePositions.reserve(initial_size + cities_nodes.size());
+	double lastid;
+	for (int cityIndex = 0; cityIndex < cities_nodes.size(); ++cityIndex) {
+		generatedFreePositions.push_back(cities_nodes[cityIndex]);
+	}
+
 	INFO("added " << generatedFreePositions.size() << " cities positions");
 	draw_points(generatedFreePositions);
+
+
 
 	double next_initial_sampling_info = 0.0;
 //generate NUM_GENERATE_POSITIONS_AT_ONCE points
 	for (generateIndex = 0; generateIndex < initial_size; ++generateIndex) {
 		collisionDetected = true;
 		HeapNode<T>* newNode = new HeapNode<T>();
-		//INFO("generated "<<generateIndex);
-		newNode->node_id = generatedFreePositions.size();	//start and goal are 0 and 1
-		newNode->cluster_id = newNode->node_id;	//start and goal are 0 and 1
+		newNode->node_id = generatedFreePositions.size();
+		newNode->cluster_id = newNode->node_id;	
 		newNode->city_node = false;
 		while (collisionDetected) {
 			fillRandomState(newNode);
@@ -195,9 +205,7 @@ void PRM<T>::create_initial_graph(std::vector<MeshObject*> &obstacles_, MeshObje
 			}
 		}
 	}
-
 	INFO("testing flann");
-	std::cout<< "HERE1" << std::endl;
 	if (planning_state == state2d) {
 		flann::Matrix<float> new_points_matrix(new float[generatedFreePositions.size() * 2],
 				generatedFreePositions.size(), 2);
@@ -238,13 +246,13 @@ void PRM<T>::create_initial_graph(std::vector<MeshObject*> &obstacles_, MeshObje
 	draw_points(generatedFreePositions);
 	INFO("generated " << initial_size << " random positions");
 	INFO("collisionCounterTot " << collisionCounterTot << " positions");
-	std::cout<< "HERE2" << std::endl;
 	continuous_point_adding_start_id = 0;
-	std::cout<< "HERE3" << std::endl;
 	this->continuous_point_adding = true;
 	
+	for (int i = 0; i << generatedFreePositions.size(); i++){
+		std::cout<< i << generatedFreePositions[i]->data.toString()<<std::endl;
+	}
 	calculate_added_points(false);
-	std::cout<<"HERE4"<<std::endl;
 	INFO("end create_initial_graph");
 }
 
@@ -263,8 +271,8 @@ void PRM<T>::add_uniform_points(int num_points_to_add) {
 		collisionDetected = true;
 		HeapNode<T>* newNode = new HeapNode<T>();
 		//INFO("generated "<<generateIndex);
-		newNode->node_id = generatedFreePositions.size();	//start and goal are 0 and 1
-		newNode->cluster_id = newNode->node_id;	//start and goal are 0 and 1
+		newNode->node_id = generatedFreePositions.size();
+		newNode->cluster_id = newNode->node_id;	
 		newNode->city_node = false;
 		while (collisionDetected) {
 			fillRandomState(newNode);
@@ -330,6 +338,9 @@ void PRM<T>::set_borders(std::vector<HeapNode<HeapPoint3D> *> borders) {
 
 template<class T>
 void PRM<T>::calculate_added_points(bool add_points) {
+	for (int i = 0; i << generatedFreePositions.size(); i++){
+		std::cout<< i << generatedFreePositions[i]->data.toString()<<std::endl;
+	}
 	if (continuous_point_adding) {
 		// INFO("calculate_added_points begin");
 		INFO("actually we have "<<generatedFreePositions.size()<<" points")
@@ -341,7 +352,9 @@ void PRM<T>::calculate_added_points(bool add_points) {
 				generatedFreePositions.begin() + generatedFreePositions.size());
 		INFO("new_points af");
 		//draw_points(new_points, &color_new_points,true);
+
 		draw_points(generatedFreePositions);
+
 		//connect new points to the map
 		flann::Matrix<float> new_points_matrix;
 		INFO("want to add " <<new_points.size() <<" points to flann index");
@@ -411,7 +424,6 @@ void PRM<T>::calculate_added_points(bool add_points) {
 		int addedCounter = 0;
 		int max_nn_used = 0;
 		INFO("add connections begin with k="<<k);
-		std::cout<<"gnereatedfree positions size " << generatedFreePositions.size() << std::endl;
 		//connect all points to generated_number_of_neighbors positions
 		for (int generateIndex = continuous_point_adding_start_id; generateIndex < generatedFreePositions.size();
 				++generateIndex) {
@@ -422,7 +434,6 @@ void PRM<T>::calculate_added_points(bool add_points) {
 				max_nn_used = MAX(max_nn_used, max_nn_act);
 			}
 			int connection_per_target = 0;
-
 			for (int neigbourIndex = 0; neigbourIndex < k; ++neigbourIndex) {
 				int nnindex = indices[generateIndex - continuous_point_adding_start_id][neigbourIndex];
 				if (generatedFreePositions[nnindex]->cluster_id == actual->cluster_id) {
@@ -449,9 +460,9 @@ void PRM<T>::calculate_added_points(bool add_points) {
 					}
 				}
 
+
 			}
 
-			// std::cout << "testing here " << std::endl;
 			for (int neigbourIndex = 0; neigbourIndex < k; ++neigbourIndex) {
 				int nnindex = indices_rew[generateIndex - continuous_point_adding_start_id][neigbourIndex];
 				if (generatedFreePositions[nnindex]->cluster_id == actual->cluster_id) {

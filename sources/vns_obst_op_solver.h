@@ -40,6 +40,8 @@
 #include <vector>
 
 #include <limits>
+#include <unistd.h>
+
 
 #include <algorithm>    // std::random_shuffle
 
@@ -194,6 +196,11 @@ private:
 	std::vector<MeshObject*> create_mesh_obstacles(std::vector<MapPoint> points_vec,
 			std::vector<Obstacle> obstacles_vec);
 
+	//shaya added this (might be a little dirty)
+	// bool testCollision(std::vector<MeshObject*> obstacles, MeshObject* object, GraphNode<HeapPoint2DHeading> node);
+	bool testCollision(std::vector<MeshObject*> obstacles, MeshObject* object, HeapNode<HeapPoint2DHeading>* node);
+
+	
 	//just as saving id
 	int path_var;
 	GOPTYPE gopType;
@@ -277,6 +284,7 @@ private:
 	double dubins_resolution;
 	
 	int neighborhood_places;
+	int neighborhood_radius;
 
 	bool save_after_optimized_length;
 
@@ -373,10 +381,9 @@ VnsPrmOPSolver<T>::VnsPrmOPSolver(CConfig& config, const std::string& problemFil
 	this->dubins_resolution = config.get<int>("dubins-resolution");
 	this->dubins_radius = config.get<double>("dubins-radius");
 	this->neighborhood_places = config.get<int>("neighborhood-places");
+	this->neighborhood_radius = config.get<int>("neighborhood-radius");
 
 	num_clusters = problem.samples.size();
-	std::cout << "number of clsuters" << num_clusters << std::endl;
-	std::cout << "number of nodes within cluster" << problem.samples[0].size() << std::endl;
 	cluster_rewards.resize(num_clusters);
 	fillCityNodes(problem); //calls fillcity nodes on a problem
 
@@ -544,11 +551,12 @@ void VnsPrmOPSolver<T>::iterate(int iter) {
 
 	prm->set_borders(border_nodes);
 	this->set_borders(border_nodes);
+
 	prm->set_gui(canvas);
 
 	INFO("resetRealClock")
 	testTouring.resetRealClock();
-	prm->create_initial_graph(this->mesh_obstacles, mesh_robot, cities_nodes, initial_prm_size);
+	prm->create_initial_graph(this->mesh_obstacles, mesh_robot, cities_nodes, initial_prm_size, nodesAllClusters); //add nodesallclusters as a parameter reference
 	this->update_roadmap_distances();
 
 	//sleep(100);
@@ -1956,6 +1964,7 @@ void VnsPrmOPSolver<T>::drawPath(int usleepTime, VnsSopPath<T> * toShow) {
 		}
 
 		CShape blackPoint("black", "black", 2, 5);
+
 
 		*canvas << canvas::CLEAR << "pathpoint" << "pathpoint" << canvas::POINT;
 		for (int var = 0; var < returnedPath.size(); ++var) {

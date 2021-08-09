@@ -109,6 +109,7 @@ crl::CConfig & addCommonConfig(crl::CConfig & config) {
 
 	config.add<int>("dubins-resolution", "intial resolution of dop", 16);
 	config.add<int>("neighborhood-places", "number of discretized points per neighborhood", 12);
+	config.add<int>("neighborhood-radius", "radius of each neighborhood", 40);
 	config.add<double>("dubins-radius", "radius of dubins vehicle", 0.5);
 	config.add<bool>("save-targets", "disable/enable save targets", true);
 	config.add<bool>("save-sampled-path", "disable/enable save sampled path", true);

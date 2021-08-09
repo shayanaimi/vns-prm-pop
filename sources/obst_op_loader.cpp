@@ -71,11 +71,9 @@ OP_Prolem<HeapPoint3D> OBSTOPLoader::getSOPDefinition(CConfig& config, const std
 		std::vector<std::vector<GraphNode<HeapPoint3D>>> clusterNodes;
 		for (int var = 0; var < loadedDataset.graph.size(); ++var) {
 			std::vector<GraphNode<HeapPoint3D>> singleNodeCluster;
-			std::cout << "PUSHING SINGLE NODE CLUSTER" << std::endl;
 			GraphNode<HeapPoint3D> gn = loadedDataset.graph[var];
 			gn.cluster_id = var;
 			singleNodeCluster.push_back(gn);
-			std::cout<< singleNodeCluster[0].data.x << std::endl; //so here they have the nodes
 			//it pushes back one node per cluster here. so we ened to find where it splits this cluster into 12 nodes
 			clusterNodes.push_back(singleNodeCluster);
 		}

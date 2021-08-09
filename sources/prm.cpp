@@ -88,7 +88,6 @@ bool PRM<HeapPoint2DHeading>::isPathFreeBetweenNodes(HeapNode<HeapPoint2DHeading
 	double freeBetween = true;
 	double t, t1, distanceAfter;
 	//HeapNode<HeapPoint2DHeading> position_between;
-
 	State start_state(actual->data.x, actual->data.y, actual->data.phi);
 	State stop_state(neigbour->data.x, neigbour->data.y, neigbour->data.phi);
 	double radius = actual->data.radius;
@@ -102,17 +101,18 @@ bool PRM<HeapPoint2DHeading>::isPathFreeBetweenNodes(HeapNode<HeapPoint2DHeading
 	object_position.pitch = 0;
 	object_position.roll = 0;
 	double test_len = collision_distance_check;
+	// INFO(collision_distance_check)
 	for ( ; test_len < dub_len ; test_len += collision_distance_check ) {
-		//INFO("test_len "<<test_len<<" of "<<dub_len);
 		State state_between = dub.getState(test_len);
 		object_position.x = state_between.point.x;
 		object_position.y = state_between.point.y;
 		object_position.yaw = state_between.ang;
-		if ( testCollision(obstacles, robot, object_position) ) {
+		if (testCollision(obstacles, robot, object_position) ) {
 			freeBetween = false;
 			break;
 		}
 	}
+	
 	return freeBetween;
 }
 
@@ -171,7 +171,6 @@ bool PRM<HeapPoint2DHeading>::testCollision(std::vector<MeshObject*> obstacles, 
 
 template<>
 bool PRM<HeapPoint3D>::testCollision(std::vector<MeshObject*> obstacles, MeshObject* object, HeapNode<HeapPoint3D>* node) {
-	//INFO("testCollision HeapPoint2D");
 	Position3D object_position;
 	object_position.x = node->data.x;
 	object_position.y = node->data.y;

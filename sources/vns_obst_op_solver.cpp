@@ -85,6 +85,7 @@ void VnsPrmOPSolver<HeapPoint3D>::save_prm_points(std::string filename) {
 	}
 }
 
+//not sure why we commented this out, but it works this way and doesn't compile otherwise.
 template<>
 void VnsPrmOPSolver<HeapPoint2D>::save_prm_point_path(std::string filename, VnsSopPath<HeapPoint2D> * toShow) {
 	// //INFO_VAR(returnedPath.size());
@@ -240,66 +241,86 @@ void VnsPrmOPSolver<HeapPoint2D>::fillCityNodes(OP_Prolem<HeapPoint3D> &problem)
 }
 
 
+
+template<>
+	bool VnsPrmOPSolver<HeapPoint2DHeading>::testCollision(std::vector<MeshObject*> obstacles, MeshObject* object, HeapNode<HeapPoint2DHeading>* node) {
+		Position3D object_position;
+		object_position.x = node->data.x;
+		object_position.y = node->data.y;
+		object_position.z = 0;
+		object_position.yaw = 0;
+		object_position.pitch = 0;
+		object_position.roll = 0;
+		return MeshObject::collide(&obstacles, object, object_position);
+	}
+
 template<>
 void VnsPrmOPSolver<HeapPoint2DHeading>::fillCityNodes(OP_Prolem<HeapPoint3D> &problem) {
+	//this function is where most of shaya's edits were made
 	INFO("fillCityNodes begin");
 	INFO_VAR(dubins_resolution);
 	double temp_radius = 30; //radius to be used when generating neighborhood samples
 	int act_node_id = 0;
 	nodesAllClusters.resize(num_clusters);
 
-
 	for (int clid = 0; clid < nodesAllClusters.size(); ++clid) {
 		//nodesAllClusters
 		nodesAllClusters[clid].resize(dubins_resolution*neighborhood_places);
+		cities_nodes.reserve(nodesAllClusters.size() * dubins_resolution * neighborhood_places);
 		int id_within_cluster = 0;
 		maximalRewardAll += problem.samples[clid][0].reward;
 		cluster_rewards[clid] = problem.samples[clid][0].reward;
-		//nodesAllClusters[clid].resize(dubins_resolution);
-		INFO_MAGENTA("TEST")
 		double angle_increment = M_2PI / neighborhood_places; //the angle by which we'll increment to discretize points around the hood
-		for (int circle_spot = 0; circle_spot < neighborhood_places; ++circle_spot){ //iterate through different positions along the circle	
-			double spot_angle = angle_increment * circle_spot; //the angle of this specific point on the circle
-			double spot_x = (problem.samples[clid][0].data.x) + temp_radius * cos(spot_angle);
-			double spot_y = (problem.samples[clid][0].data.y) + temp_radius * sin(spot_angle);
-			for (int nodeid = 0; nodeid < dubins_resolution; ++nodeid) { //iterate through different angles in this circle spot
-				nodesAllClusters[clid][id_within_cluster].cluster_id = problem.samples[clid][0].cluster_id;
-				nodesAllClusters[clid][id_within_cluster].id = act_node_id;
-				act_node_id += 1;
-				nodesAllClusters[clid][id_within_cluster].data.x = spot_x;
-				nodesAllClusters[clid][id_within_cluster].data.y = spot_y;
-				nodesAllClusters[clid][id_within_cluster].reward = problem.samples[clid][0].reward;
-				nodesAllClusters[clid][id_within_cluster].data.phi = nodeid * M_2PI / dubins_resolution;
-				id_within_cluster++;
-				//cout << "id within cluster " << id_within_cluster << endl;
+		for (int circle_spot = 0; circle_spot < neighborhood_places; ++circle_spot){ //iterate through different positions around the circle	
+			double spot_angle = angle_increment * circle_spot; //the angle associated with this "neighbor"
+			double spot_x = (problem.samples[clid][0].data.x) + neighborhood_radius * cos(spot_angle); //basic trig to determine x and y coordinates based on angle
+			double spot_y = (problem.samples[clid][0].data.y) + neighborhood_radius * sin(spot_angle);
+
+			// Before adding the new point to the system, check for collisions
+			HeapNode<HeapPoint2DHeading>* city_node = new HeapNode<HeapPoint2DHeading>(); //temporary city node just for testing purposes
+			city_node->data.x = spot_x;
+			city_node->data.y = spot_y;
+			if (!testCollision(mesh_obstacles, mesh_robot, city_node)) {
+				//if the node is okay, it needs to be added to two data structures; nodesallclusters and cities_nodes
+				delete city_node;
+				for (int nodeid = 0; nodeid < dubins_resolution; ++nodeid) { //iterate through different headings in this circle spot
+					//first add the node to nodesallclusters
+					nodesAllClusters[clid][id_within_cluster].cluster_id = problem.samples[clid][0].cluster_id;
+					nodesAllClusters[clid][id_within_cluster].id = act_node_id;
+					act_node_id += 1;
+					nodesAllClusters[clid][id_within_cluster].data.x = spot_x;
+					nodesAllClusters[clid][id_within_cluster].data.y = spot_y;
+					nodesAllClusters[clid][id_within_cluster].reward = problem.samples[clid][0].reward;
+					nodesAllClusters[clid][id_within_cluster].data.phi = nodeid * M_2PI / dubins_resolution;
+
+					//now setting city node data
+					HeapNode<HeapPoint2DHeading>* city_node = new HeapNode<HeapPoint2DHeading>();
+					city_node->data.x = spot_x;
+					city_node->data.y = spot_y;
+					city_node->data.phi = nodesAllClusters[clid][id_within_cluster].data.phi;
+					city_node->data.radius = dubins_radius;
+					city_node->node_id = nodesAllClusters[clid][id_within_cluster].id;
+					city_node->cluster_id = nodesAllClusters[clid][id_within_cluster].cluster_id;
+					city_node->city_node = true;
+					cities_nodes.push_back(city_node);
+					id_within_cluster++;
+
+				}
 			}
+			else {
+				//if there is a collision, nodesallclusters needs to be resized because memory was already reserved
+				delete city_node;
+				nodesAllClusters[clid].resize(nodesAllClusters[clid].size() - dubins_resolution);
+			}				
 		}
 	}
 	INFO("nodesAllClusters filled");
 
 	num_clusters = nodesAllClusters.size();
-
-	cities_nodes.reserve(nodesAllClusters.size() * dubins_resolution * neighborhood_places);
-	std::cout << "RESERVED " << nodesAllClusters.size() * dubins_resolution * neighborhood_places << std::endl;
-	for (int var = 0; var < nodesAllClusters.size(); ++var) { //until nodesallclusters size
-		for (int i = 0; i < neighborhood_places; ++i){
-			for (int head_id = 0; head_id < dubins_resolution; ++head_id) { // head id is dubins resolution number
-				HeapNode<HeapPoint2DHeading> *city_node = new HeapNode<HeapPoint2DHeading>();
-				int city_id = i*dubins_resolution + head_id;
-				city_node->data.x = nodesAllClusters[var][city_id].data.x;
-				city_node->data.y = nodesAllClusters[var][city_id].data.y;
-				city_node->data.phi = nodesAllClusters[var][city_id].data.phi;
-				city_node->data.radius = dubins_radius;
-				city_node->node_id = nodesAllClusters[var][city_id].id;
-				city_node->cluster_id = nodesAllClusters[var][city_id].cluster_id;
-				city_node->city_node = true;
-				cities_nodes.push_back(city_node);
-			}
-			
-		}
-	}
+	
+	
 	INFO("city nodes set");
-	this->prm->set_num_headings(dubins_resolution * neighborhood_places); //changed this
+	this->prm->set_num_headings(dubins_resolution * neighborhood_places); 
 	INFO("fillCityNodes end");
 }
 
